@@ -3441,7 +3441,7 @@ mod tests {
             optimize(parse("(bookmarks() & all())..(all() & tags())").unwrap()), @r###"
         Range {
             roots: CommitRef(Bookmarks(Substring(""))),
-            heads: CommitRef(Tags),
+            heads: CommitRef(Tags(Substring("")),
             generation: 0..18446744073709551615,
         }
         "###);
@@ -3449,7 +3449,7 @@ mod tests {
             optimize(parse("(bookmarks() & all())::(all() & tags())").unwrap()), @r###"
         DagRange {
             roots: CommitRef(Bookmarks(Substring(""))),
-            heads: CommitRef(Tags),
+            heads: CommitRef(Tags(Substring("")),
         }
         "###);
 
@@ -3508,21 +3508,21 @@ mod tests {
             optimize(parse("(bookmarks() & all()) | (all() & tags())").unwrap()), @r###"
         Union(
             CommitRef(Bookmarks(Substring(""))),
-            CommitRef(Tags),
+            CommitRef(Tags(Substring("")),
         )
         "###);
         insta::assert_debug_snapshot!(
             optimize(parse("(bookmarks() & all()) & (all() & tags())").unwrap()), @r###"
         Intersection(
             CommitRef(Bookmarks(Substring(""))),
-            CommitRef(Tags),
+            CommitRef(Tags(Substring("")),
         )
         "###);
         insta::assert_debug_snapshot!(
             optimize(parse("(bookmarks() & all()) ~ (all() & tags())").unwrap()), @r###"
         Difference(
             CommitRef(Bookmarks(Substring(""))),
-            CommitRef(Tags),
+            CommitRef(Tags(Substring("")),
         )
         "###);
     }

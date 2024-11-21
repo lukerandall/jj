@@ -30,6 +30,7 @@ mod evolog;
 mod file;
 mod fix;
 mod git;
+mod github;
 mod help;
 mod init;
 mod interdiff;
@@ -113,6 +114,8 @@ enum Command {
     Fix(fix::FixArgs),
     #[command(subcommand)]
     Git(git::GitCommand),
+    #[command(subcommand)]
+    Github(github::GithubCommand),
     Help(help::HelpArgs),
     Init(init::InitArgs),
     Interdiff(interdiff::InterdiffArgs),
@@ -208,6 +211,7 @@ pub fn run_command(ui: &mut Ui, command_helper: &CommandHelper) -> Result<(), Co
         }
         Command::Fix(args) => fix::cmd_fix(ui, command_helper, args),
         Command::Git(args) => git::cmd_git(ui, command_helper, args),
+        Command::Github(args) => github::cmd_github(ui, command_helper, args),
         Command::Help(args) => help::cmd_help(ui, command_helper, args),
         Command::Init(args) => init::cmd_init(ui, command_helper, args),
         Command::Interdiff(args) => interdiff::cmd_interdiff(ui, command_helper, args),

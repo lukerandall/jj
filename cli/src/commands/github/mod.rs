@@ -18,7 +18,10 @@ use crate::cli_util::CommandHelper;
 use crate::command_error::CommandError;
 use crate::ui::Ui;
 
-/// GitHub operations.
+/// GitHub specific operations.
+///
+/// Requires the `gh` CLI to be installed and configured with the appropriate
+/// GitHub credentials. See https://cli.github.com/
 #[derive(clap::Subcommand, Clone, Debug)]
 pub enum GithubCommand {
     Link(link::GithubLinkArgs),

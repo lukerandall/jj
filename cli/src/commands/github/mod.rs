@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod link;
+pub mod util;
 
 use crate::cli_util::CommandHelper;
 use crate::command_error::CommandError;

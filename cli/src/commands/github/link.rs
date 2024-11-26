@@ -14,8 +14,6 @@
 
 use std::io::Write as _;
 use std::process::Command;
-use std::process::ExitStatus;
-use std::process::Stdio;
 use tracing::instrument;
 
 use clap_complete::ArgValueCandidates;
@@ -24,12 +22,12 @@ use jj_lib::commit::Commit;
 use jj_lib::refs::LocalAndRemoteRef;
 use jj_lib::str_util::StringPattern;
 use jj_lib::view::View;
-use thiserror::Error;
+
+use crate::commands::github::util::{gh_command, run_command_with_output};
 
 use crate::cli_util::CommandHelper;
 use crate::cli_util::RevisionArg;
 use crate::command_error::user_error;
-use crate::command_error::user_error_with_hint;
 use crate::command_error::CommandError;
 use crate::complete;
 use crate::ui::Ui;
@@ -91,6 +89,18 @@ pub(crate) fn cmd_github_link(
     Ok(())
 }
 
+fn links_for_commits(commits: Vec<Commit>) -> Result<Vec<String>, CommandError> {
+    generate_links(commits, |cmd, commit| {
+        cmd.arg(format!("{}", commit.id()));
+    })
+}
+
+fn links_for_bookmarks(bookmarks: Vec<String>) -> Result<Vec<String>, CommandError> {
+    generate_links(bookmarks, |cmd, bookmark| {
+        cmd.arg("--branch").arg(format!("{}", bookmark));
+    })
+}
+
 fn generate_links<T, F>(items: Vec<T>, configure_command: F) -> Result<Vec<String>, CommandError>
 where
     F: Fn(&mut Command, T),
@@ -105,52 +115,11 @@ fn generate_link<T, F>(item: T, configure_command: &F) -> Result<String, Command
 where
     F: Fn(&mut Command, T),
 {
-    let mut cmd = gh_browse_command();
+    let mut cmd = gh_command();
+    cmd.arg("browse").arg("--no-browser");
     configure_command(&mut cmd, item);
 
-    let output = run_command(&mut cmd)?;
-    let url = parse_utf8_string(output)?.trim_end().to_string();
-
-    Ok(url)
-}
-
-fn links_for_commits(commits: Vec<Commit>) -> Result<Vec<String>, CommandError> {
-    generate_links(commits, |cmd, commit| {
-        cmd.arg(format!("{}", commit.id()));
-    })
-}
-
-fn links_for_bookmarks(bookmarks: Vec<String>) -> Result<Vec<String>, CommandError> {
-    generate_links(bookmarks, |cmd, bookmark| {
-        cmd.arg("--branch").arg(format!("{}", bookmark));
-    })
-}
-
-fn gh_browse_command() -> Command {
-    let mut command = Command::new("gh");
-    command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .arg("browse")
-        .arg("--no-browser");
-
-    command
-}
-
-fn run_command(command: &mut Command) -> GhResult<Vec<u8>> {
-    tracing::info!(?command, "running gh command");
-    let process = command.spawn()?;
-    let output = process.wait_with_output()?;
-    tracing::info!(?command, ?output.status, "gh command exited");
-    if output.status.success() {
-        Ok(output.stdout)
-    } else {
-        Err(GhError::Command {
-            exit_status: output.status,
-            stderr: String::from_utf8_lossy(&output.stderr).trim_end().into(),
-        })
-    }
+    run_command_with_output(&mut cmd).map_err(Into::into)
 }
 
 fn find_bookmarks<'a>(
@@ -181,43 +150,5 @@ fn find_bookmarks<'a>(
             "No matching bookmarks for patterns: {}",
             patterns.iter().join(", ")
         ))),
-    }
-}
-
-type GhResult<T> = Result<T, GhError>;
-
-fn parse_utf8_string(data: Vec<u8>) -> GhResult<String> {
-    String::from_utf8(data).map_err(|_| GhError::BadResult)
-}
-
-#[derive(Debug, Error)]
-pub enum GhError {
-    #[error("gh command failed with {exit_status}:\n{stderr}")]
-    Command {
-        exit_status: ExitStatus,
-        stderr: String,
-    },
-    #[error("Failed to parse response from gh")]
-    BadResult,
-    #[error("Failed to run gh")]
-    Io(#[from] std::io::Error),
-}
-
-impl From<GhError> for CommandError {
-    fn from(error: GhError) -> CommandError {
-        match error {
-            GhError::Command {
-                exit_status,
-                stderr,
-            } => user_error(format!(
-                "gh command failed with {}: {}",
-                exit_status, stderr,
-            )),
-            GhError::BadResult => user_error("Failed to parse response from gh"),
-            GhError::Io(err) => user_error_with_hint(
-                format!("gh failed with error: {}", err),
-                "Check the gh CLI is installed and `gh auth status` shows that you are logged in",
-            ),
-        }
     }
 }

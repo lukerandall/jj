@@ -14,6 +14,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### New features
 
+* `jj commit` now accepts `--editor` / `-E` to edit the commit message in an
+  editor.
+
 * `jj squash` now accepts `--editor` / `-E` to edit the squashed commit message.
 
 ### Fixed bugs

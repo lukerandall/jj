@@ -63,6 +63,9 @@ pub(crate) struct CommitArgs {
     /// The change description to use (don't open editor)
     #[arg(long = "message", short, value_name = "MESSAGE")]
     message_paragraphs: Vec<String>,
+    /// Open an editor to edit the commit's description
+    #[arg(long, short = 'E')]
+    editor: bool,
     /// Put these paths in the first commit
     #[arg(
         value_name = "FILESETS",
@@ -169,13 +172,20 @@ new working-copy commit.
 
     let description = if !args.message_paragraphs.is_empty() {
         let mut description = join_message_paragraphs(&args.message_paragraphs);
-        if !description.is_empty() {
+        if !description.is_empty() || args.editor {
             // The first trailer would become the first line of the description.
             // Also, a commit with no description is treated in a special way in jujutsu: it
             // can be discarded as soon as it's no longer the working copy. Adding a
             // trailer to an empty description would break that logic.
             commit_builder.set_description(description);
             description = add_trailers(ui, &tx, &commit_builder)?;
+            if args.editor {
+                commit_builder.set_description(&description);
+                let temp_commit = commit_builder.write_hidden()?;
+                let intro = "";
+                let template = description_template(ui, &tx, intro, &temp_commit)?;
+                description = edit_description(&text_editor, &template)?;
+            }
         }
         description
     } else {
